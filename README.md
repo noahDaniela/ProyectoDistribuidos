@@ -4,7 +4,7 @@
 Las solicitudes entre el cliente y el servidor se realizan por medio de ZMQ
 El cliente envía un String con el comando correspondiente a la solicitud y sus parámetros y luego el Servidor le responde con otra String
 
-Existen dos tipos de solicitudes:
+Existen tres tipos de solicitudes:
 
 * __LISTAR__\
 Muestra un listado de todos los productos disponibles en el sistema
