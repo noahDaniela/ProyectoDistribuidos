@@ -6,11 +6,11 @@ El cliente envía un String con el comando correspondiente a la solicitud y sus 
 
 Existen dos tipos de solicitudes:
 
--> LISTAR\
+* __LISTAR__\
 Muestra un listado de todos los productos disponibles en el sistema
 
--> CONSULTAR \<id\>\
+* __CONSULTAR \<id\>__\
 Muestra un producto al detalle
 
--> COMPRAR \<id\>\
+* __COMPRAR \<id\>__\
 Comprar el producto especificado si hay unidades disponibles
