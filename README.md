@@ -6,11 +6,11 @@ El cliente envía un String con el comando correspondiente a la solicitud y sus 
 
 Existen dos tipos de solicitudes:
 
--> LISTAR
+-> LISTAR\
 Muestra un listado de todos los productos disponibles en el sistema
 
--> CONSULTAR <id>
+-> CONSULTAR \<id\>\
 Muestra un producto al detalle
 
--> COMPRAR <id>
+-> COMPRAR \<id\>\
 Comprar el producto especificado si hay unidades disponibles
