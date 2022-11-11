@@ -9,7 +9,7 @@ public class Main {
     static final Integer PORT = 5555;
 
     public static void main(String[] args) {
-        System.out.println("Balanceador de cargas");
+        System.out.println("Servidor b");
 
         // Creando la red de ZMQ
         try (ZContext context = new ZContext()) {
