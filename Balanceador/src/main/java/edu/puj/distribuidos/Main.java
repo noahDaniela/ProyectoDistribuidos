@@ -4,36 +4,42 @@ import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
+import java.util.ArrayList;
+
 public class Main {
 
-    static final Integer PORT = 5555;
+    /* --- Privado --- */
+    private static final Integer N_WORKERS = 1;
+    private static ArrayList<Thread> workerThreads = new ArrayList<>(); // Hilos trabajadores;
+
+    /* --- Público --- */
+    public static final Integer PORT = 5555;
+    public static final String WORKERS_PATH = "inproc://workers";
 
     public static void main(String[] args) {
-        System.out.println("Servidor b");
+        System.out.println("Balanceador de cargas - Gestión de productos");
 
         // Creando la red de ZMQ
         try (ZContext context = new ZContext()) {
+            // Creando el servidor que recibe solicitudes
+            ZMQ.Socket clients = context.createSocket(SocketType.ROUTER);
+            clients.bind("tcp://*:" + PORT);
+            System.out.println("Iniciado el servidor en el puerto: " + PORT);
 
-            // Creando el servidor
-            ZMQ.Socket socket = context.createSocket(SocketType.REP);
-            socket.bind("tcp://*:" + PORT.toString());
-            System.out.println("Iniciado el servidor en el puerto: " + PORT.toString());
+            // Creando los servicios que atenderán las solicitudes
+            ZMQ.Socket workers = context.createSocket(SocketType.DEALER);
+            workers.bind(Main.WORKERS_PATH);
 
-            // Bucle infinito
-            while (!Thread.currentThread().isInterrupted()) {
-                // Recibir la petición
-                byte[] request = socket.recv();
-                System.out.println("Recibida petición de un cliente");
-
-                // Mostrar la petición
-                String requestStr = new String(request, ZMQ.CHARSET);
-                System.out.println("Petición: " + requestStr);
-
-                // Responder
-                String response = " Mundo!";
-                socket.send(response.getBytes(ZMQ.CHARSET));
-                System.out.println("Enviada respuesta: " + response);
+            // Iniciar los workers
+            System.out.println("Generando " + N_WORKERS + " workers...");
+            for (int i = 0; i < N_WORKERS; i++) {
+                Thread newWorker = new Worker(context);
+                newWorker.start();
+                workerThreads.add(newWorker);
             }
+
+            // Crear el proxy entre solicitudes y workers
+            ZMQ.proxy(clients, workers, null);
         }
     }
 }

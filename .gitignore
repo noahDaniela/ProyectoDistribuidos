@@ -1,3 +1,7 @@
 /Balanceador/.idea/
+/Balanceador/target/
 /Cliente/.idea/
+/Cliente/target/
+/Ayudante/.idea/
+/Ayudante/target/
 .DS_Store

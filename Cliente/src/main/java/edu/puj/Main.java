@@ -6,15 +6,16 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZSocket;
 
 import java.util.Scanner;
+import java.util.UUID;
 
 public class Main {
 
-    static final Integer PORT = 5555;
-    static final Scanner scanner = new Scanner(System.in);
-
+    static final Integer PORT = 5555; // Puerto del Servidor
+    static final UUID clientUUID = UUID.randomUUID(); // UUID identificador del cliente
+    static final Scanner scanner = new Scanner(System.in); // Scanner para los menús
 
     public static void main(String[] args) {
-        System.out.println("Cliente");
+        System.out.println("Cliente - Gestión de productos");
 
         // Obtener datos del servidor
         System.out.print("Digite la dirección IP del Servidor: ");
@@ -22,11 +23,14 @@ public class Main {
 
         // Inicializar RED
         try (ZContext context = new ZContext()) {
-
-            // Conectarse al servidor
+            // Crear el Socket y darle una identidad (UUID)
             System.out.println("Conectando al servidor... " + serverIp);
             ZMQ.Socket socket = context.createSocket(SocketType.REQ);
+            socket.setIdentity(clientUUID.toString().getBytes(ZMQ.CHARSET));
+
+            // Conectarse al servidor
             socket.connect("tcp://" + serverIp + ":" + PORT.toString());
+            System.out.println("UUID del cliente: " + clientUUID);
 
             // Mostrar el menú
             int opcion = 0;
@@ -37,8 +41,9 @@ public class Main {
                 System.out.print("Seleccione una opción: ");
                 opcion = scanner.nextInt();
 
+                // Tomar un camino dependiendo de la opción
                 switch (opcion) {
-                    case 1:
+                    case 1 -> {
                         System.out.println("Diciendo hola al servidor");
 
                         // Enviar información al servidor
@@ -53,23 +58,15 @@ public class Main {
 
                         // Mostrar la respuesta
                         System.out.println("Respuesta del Servidor: " + responseStr);
-                        break;
-
-                    case 0:
-                        System.out.println("Saliendo...");
-                        break;
-
-                    default:
-                        System.out.println("Opción desconocida");
-                        break;
+                    }
+                    case 0 -> System.out.println("Saliendo...");
+                    default -> System.out.println("Opción desconocida");
                 }
-
             } while (opcion != 0);
 
             // Desconectarse
             System.out.println("Desconectándose del sistema...");
             socket.close();
-
         }
     }
 }
