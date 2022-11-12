@@ -4,25 +4,31 @@ import org.zeromq.*;
 
 import java.util.UUID;
 
-public class RequestManager extends Thread {
+public class RequestManager implements Runnable {
     protected Integer nRequest = 0; // Contador de la cantidad de solicitudes atendidas
     protected final UUID workerUUID = UUID.randomUUID();
     protected final String serverIP;
-    protected final ZContext context;
 
-    public RequestManager(String serverIP, ZContext context) {
+    public RequestManager(String serverIP) {
         this.serverIP = serverIP;
-        this.context = context;
+    }
+
+    public String ping() {
+        try {
+            Thread.sleep(5000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "PONG";
     }
 
     @Override
     public void run() {
         // Inicializar RED
-        try (ZMQ.Socket socket = context.createSocket(SocketType.REP)) {
+        try (ZMQ.Socket socket = Main.getContext().createSocket(SocketType.REP)) {
             // Crear el Socket y darle una identidad (UUID)
             System.out.println("Conectando al servidor... " + serverIP);
             socket.setIdentity(workerUUID.toString().getBytes(ZMQ.CHARSET));
-            socket.setImmediate(true);
 
             // Conectarse al servidor
             socket.connect("tcp://" + serverIP + ":" + Main.PORT);
@@ -38,7 +44,7 @@ public class RequestManager extends Thread {
 
                     // Procesar solicitud
                     String respuesta = switch (request) {
-                        case "PING" -> "PONG";
+                        case "PING" -> ping();
                         default -> "FAIL";
                     };
 
@@ -49,15 +55,18 @@ public class RequestManager extends Thread {
 
                 } catch (ZMQException e) {
                     switch (ZMQ.Error.findByCode(e.getErrorCode())) {
-                        case ETERM -> System.out.println("Sistema detenido");
+                        case ETERM -> System.out.println("Contexto ZMQ finalizado");
                         case EAGAIN -> System.out.println("El Balanceador no responde a las solicitudes");
                         default -> System.out.println("Error de conexión en el sistema (" + e.getMessage() + ")");
                     }
+                    break;
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
             // Mostrar cierre
-            System.out.println("\nSistema Finalizado (" + workerUUID + ")");
+            System.out.println("Sistema Finalizado (" + workerUUID + ")");
             System.out.println("Se atendieron " + nRequest + " solicitudes");
         }
     }
