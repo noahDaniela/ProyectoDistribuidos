@@ -1,42 +1,25 @@
 package edu.puj.distribuidos;
 
-import org.zeromq.SocketType;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
-
-import java.util.ArrayList;
+import org.zeromq.*;
 
 public class Main {
-
-    /* --- Privado --- */
-    private static final Integer N_WORKERS = 1;
-    private static ArrayList<Thread> workerThreads = new ArrayList<>(); // Hilos trabajadores;
-
-    /* --- Público --- */
-    public static final Integer PORT = 5555;
-    public static final String WORKERS_PATH = "inproc://workers";
+    public static final Integer CLIENT_PORT = 5550;
+    public static final Integer WORKER_PORT = 5560;
 
     public static void main(String[] args) {
         System.out.println("Balanceador de cargas - Gestión de productos");
 
-        // Creando la red de ZMQ
+        // Creando el proxy de ZMQ
         try (ZContext context = new ZContext()) {
-            // Creando el servidor que recibe solicitudes
+            // Creando el servidor que recibe solicitudes del cliente
             ZMQ.Socket clients = context.createSocket(SocketType.ROUTER);
-            clients.bind("tcp://*:" + PORT);
-            System.out.println("Iniciado el servidor en el puerto: " + PORT);
+            clients.bind("tcp://*:" + CLIENT_PORT);
+            System.out.println("Servicio de clientes por el puerto: " + CLIENT_PORT);
 
-            // Creando los servicios que atenderán las solicitudes
+            // Creando el socket que atiende a los workers
             ZMQ.Socket workers = context.createSocket(SocketType.DEALER);
-            workers.bind(Main.WORKERS_PATH);
-
-            // Iniciar los workers
-            System.out.println("Generando " + N_WORKERS + " workers...");
-            for (int i = 0; i < N_WORKERS; i++) {
-                Thread newWorker = new Worker(context);
-                newWorker.start();
-                workerThreads.add(newWorker);
-            }
+            workers.bind("tcp://*:" + WORKER_PORT);
+            System.out.println("Servicio de worker en el puerto: " + WORKER_PORT);
 
             // Crear el proxy entre solicitudes y workers
             ZMQ.proxy(clients, workers, null);

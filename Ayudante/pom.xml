@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>puj.edu</groupId>
+    <groupId>puj.edu.distribuidos</groupId>
     <artifactId>Ayudante</artifactId>
     <version>1.0-SNAPSHOT</version>
 
@@ -14,6 +14,14 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <!-- https://mvnrepository.com/artifact/org.zeromq/jeromq -->
+    <dependencies>
+        <dependency>
+            <groupId>org.zeromq</groupId>
+            <artifactId>jeromq</artifactId>
+            <version>0.5.2</version>
+        </dependency>
+    </dependencies>
 
 
 </project>

@@ -1,16 +1,20 @@
 ## Modelo de comunicación
 
-### Cliente / Servidor
-Las solicitudes entre el cliente y el servidor se realizan por medio de ZMQ
-El cliente envía un String con el comando correspondiente a la solicitud y sus parámetros y luego el Servidor le responde con otra String
+### Cliente / Balanceadro
+El cliente envía un String con el comando correspondiente a la solicitud y sus parámetros y luego el Balanceador le responde con otra String
 
-Existen tres tipos de solicitudes:
+#### Comandos de usuario
 
-* __LISTAR__\
+* __LIST__\
 Muestra un listado de todos los productos disponibles en el sistema
 
-* __CONSULTAR \<id\>__\
+* __QUERY \<id\>__\
 Muestra un producto al detalle
 
-* __COMPRAR \<id\>__\
+* __BUY \<id\>__\
 Comprar el producto especificado si hay unidades disponibles
+
+#### Comandos de control
+
+* __PING__\
+Realizar un ping al servidor, debe responder con __PONG__
