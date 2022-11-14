@@ -46,12 +46,12 @@ public class Main {
      *
      * @param serverIP IP del servidor con el que se configurarán los hilos
      */
-    private static void startServices(String serverIP) {
+    private static void startServices(String serverIP, DatabaseQuery database) {
         // Crear el contexto
         context = new ZContext();
 
         // Crear el hilo principal (Atiende solicitudes)
-        Thread mainThread = new Thread(new RequestManager(serverIP));
+        Thread mainThread = new Thread(new RequestManager(serverIP, database));
         // Crear el hilo del serivicio de HealthCheck
         Thread healthCheck = new Thread(new BalancerHealthCheck(serverIP));
 
@@ -90,6 +90,25 @@ public class Main {
         System.out.print("Digite la dirección IP del Balanceador: ");
         String serverIP = scanner.nextLine();
 
+        // Obtener datos de la base de datos
+        System.out.println("Base de datos:");
+        System.out.print("Digite la dirección IP de la base de datos: ");
+        String dbip = scanner.nextLine();
+
+        System.out.print("Digite el puerto: ");
+        Integer puerto = Integer.valueOf(scanner.nextLine());
+
+        System.out.print("Digite el nombre de la BD: ");
+        String bdname = scanner.nextLine();
+
+        System.out.print("Digite el nombre de usuario: ");
+        String username = scanner.nextLine();
+
+        System.out.print("Digite la constraseña: ");
+        String password = scanner.nextLine();
+
+        DatabaseQuery database = new DatabaseQuery(dbip, puerto, bdname, username, password);
+
         // Crear el manejador de excepciones
         threadExceptionHandler = (t, e) -> {
             if (e instanceof ServerNotResponding) {
@@ -104,7 +123,7 @@ public class Main {
                     // Obtener la dirección IP del ALTERNATIVE
                     System.out.println("\nCambiando a servidor alterno: " + fallbackServer);
                     // Reconfigurar los hilos
-                    startServices(fallbackServer);
+                    startServices(fallbackServer, database);
                     fallbackServer = null;
 
                 } else {
@@ -119,7 +138,7 @@ public class Main {
         };
 
         // Habilitar los servicios
-        startServices(serverIP);
+        startServices(serverIP, database);
 
         // Agregar HOOK para cuando se quiera salir
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

@@ -75,6 +75,7 @@ public class DoRequest {
         // Obtener tiempo
         long endTime = System.currentTimeMillis();
         consecutiveTries = 0;
+        workerCheck.interrupt();
 
         // Mostrar la respuesta
         System.out.println("Solicitud completada en: " + (endTime - startTime) + "ms");
@@ -253,7 +254,7 @@ public class DoRequest {
                             System.out.println(makeRequest("LIST", workerCheck));
                         }
                         case 2 -> {
-                            System.out.print("Digite el ID del producto a consultar:");
+                            System.out.print("Digite el ID del producto a consultar: ");
                             int idProducto;
                             if (testMode) idProducto = random.nextInt(10);
                             else idProducto = scanner.nextInt();
@@ -261,7 +262,7 @@ public class DoRequest {
                             System.out.println(makeRequest(("QUERY " + idProducto), workerCheck));
                         }
                         case 3 -> {
-                            System.out.print("Digite el ID del producto a comprar");
+                            System.out.print("Digite el ID del producto a comprar: ");
                             int idProducto;
                             if (testMode) idProducto = random.nextInt(10);
                             else idProducto = scanner.nextInt();

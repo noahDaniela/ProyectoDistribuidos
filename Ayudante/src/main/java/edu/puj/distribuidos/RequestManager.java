@@ -12,9 +12,11 @@ public class RequestManager implements Runnable {
     protected Long totalTime = 0L; // Contador del tiempo total atendido
     protected final UUID workerUUID = UUID.randomUUID();
     protected final String serverIP;
+    protected final DatabaseQuery database;
 
-    public RequestManager(String serverIP) {
+    public RequestManager(String serverIP, DatabaseQuery database) {
         this.serverIP = serverIP;
+        this.database = database;
     }
 
     public String ping() {
@@ -23,6 +25,18 @@ public class RequestManager implements Runnable {
         } catch (InterruptedException ignored) {
         }
         return "PONG";
+    }
+
+    public String list() {
+        return database.consultarProductos();
+    }
+
+    public String query(Integer id) {
+        return database.consultarProducto(id);
+    }
+
+    public String buy(Integer id) {
+        return database.adquirirProducto(id);
     }
 
     @Override
@@ -43,10 +57,13 @@ public class RequestManager implements Runnable {
                     // Recibir solicitud
                     System.out.println("\n(" + nRequest + ") Esperando solicitudes");
                     String client = new String(socket.recv(), ZMQ.CHARSET);
-                    String request = new String(socket.recv(), ZMQ.CHARSET);
+                    String requestUnparsed = new String(socket.recv(), ZMQ.CHARSET);
                     long startTime = System.currentTimeMillis();
                     System.out.println("Cliente: " + client);
-                    System.out.println("Solicitud: " + request);
+                    System.out.println("Solicitud: " + requestUnparsed);
+
+                    // Request
+                    String[] request = requestUnparsed.split("\\s+");
 
                     // Iniciar WORKERCHECK
                     ScheduledExecutorService checkers = Executors.newSingleThreadScheduledExecutor();
@@ -55,8 +72,11 @@ public class RequestManager implements Runnable {
                             0, Main.WORKER_CHECK_TIME, TimeUnit.MILLISECONDS);
 
                     // Procesar solicitud
-                    String respuesta = switch (request) {
+                    String respuesta = switch (request[0]) {
                         case "PING" -> ping();
+                        case "LIST" -> list();
+                        case "QUERY" -> query(Integer.valueOf(request[1]));
+                        case "BUY" -> buy(Integer.valueOf(request[1]));
                         default -> "FAIL";
                     };
 
