@@ -5,10 +5,14 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
+import java.util.function.Function;
+
 public class BalancerHealthCheck implements Runnable {
     protected final ZMQ.Socket socket;
 
-    public BalancerHealthCheck(String serverIP, ZContext context) {
+    protected final Function<String, Boolean> setFallbackServer;
+
+    public BalancerHealthCheck(String serverIP, ZContext context, Function<String, Boolean> setFallbackServer) {
         // Inicializar el socket
         this.socket = context.createSocket(SocketType.SUB);
         socket.connect("tcp://" + serverIP + ":" + Main.HEALTH_CHECK_PORT);
@@ -17,6 +21,7 @@ public class BalancerHealthCheck implements Runnable {
         // Suscribirse a SCHECK y SALTERNATIVE
         socket.subscribe("HCHECK".getBytes(ZMQ.CHARSET));
         socket.setReceiveTimeOut(Main.HEALTH_CHECK_TIMEOUT);
+        this.setFallbackServer = setFallbackServer;
     }
 
     @Override
@@ -29,7 +34,7 @@ public class BalancerHealthCheck implements Runnable {
 
                 // Parsear la solicitud
                 String[] data = new String(response, ZMQ.CHARSET).split("\\s+");
-                Main.setFallbackServer(data[1]);
+                setFallbackServer.apply(data[1]);
             }
         } catch (ZMQException e) {
             if (ZMQ.Error.findByCode(e.getErrorCode()) == ZMQ.Error.EAGAIN) {

@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 public class RequestManager implements Runnable {
     protected Integer nRequest = 0; // Contador de la cantidad de solicitudes atendidas
+    protected Long totalTime = 0L; // Contador del tiempo total atendido
     protected final UUID workerUUID = UUID.randomUUID();
     protected final String serverIP;
 
@@ -19,8 +20,7 @@ public class RequestManager implements Runnable {
     public String ping() {
         try {
             Thread.sleep(5000);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (InterruptedException ignored) {
         }
         return "PONG";
     }
@@ -44,6 +44,7 @@ public class RequestManager implements Runnable {
                     System.out.println("\n(" + nRequest + ") Esperando solicitudes");
                     String client = new String(socket.recv(), ZMQ.CHARSET);
                     String request = new String(socket.recv(), ZMQ.CHARSET);
+                    long startTime = System.currentTimeMillis();
                     System.out.println("Cliente: " + client);
                     System.out.println("Solicitud: " + request);
 
@@ -62,9 +63,12 @@ public class RequestManager implements Runnable {
                     // Responder solicitud
                     System.out.println("Enviando respuesta...");
                     socket.send(respuesta.getBytes(ZMQ.CHARSET));
+                    long endTime = System.currentTimeMillis();
                     nRequest++;
 
                     // Detener WORKERCHECK
+                    System.out.println("Solicitud procesada en: " + (endTime - startTime) + "ms");
+                    totalTime += (endTime - startTime);
                     checkers.shutdownNow();
 
                 } catch (ZMQException e) {
@@ -82,6 +86,7 @@ public class RequestManager implements Runnable {
             // Mostrar cierre
             System.out.println("Sistema Finalizado (" + workerUUID + ")");
             System.out.println("Se atendieron " + nRequest + " solicitudes");
+            System.out.println("Tiempo promedio de respuesta: " + (totalTime / nRequest) + "ms");
         }
     }
 }
