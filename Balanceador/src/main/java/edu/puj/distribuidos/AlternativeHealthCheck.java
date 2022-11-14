@@ -8,11 +8,11 @@ import org.zeromq.ZMQException;
 /**
  * Escuchar las solicitudes del Balanceador Alternative
  */
-public class AlternativeCheckServer implements Runnable {
+public class AlternativeHealthCheck implements Runnable {
 
     private final ZMQ.Socket socket;
 
-    public AlternativeCheckServer(ZContext context) {
+    public AlternativeHealthCheck(ZContext context) {
         // Abrir el socket
         socket = context.createSocket(SocketType.SUB);
         socket.bind("tcp://*:" + Main.ALTPING_PORT);

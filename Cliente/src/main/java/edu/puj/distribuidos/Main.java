@@ -8,7 +8,6 @@ import org.zeromq.ZMQException;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
     private static final Scanner scanner = new Scanner(System.in); // Scanner para los menús
@@ -16,6 +15,8 @@ public class Main {
     /* Puertos */
     public static final Integer PORT = 5550; // Puerto del Servidor
     public static final Integer HEALTH_CHECK_PORT = 5570; // Puerto de HEALTH_CHECK
+    public static final Integer WORKER_CHECK_PORT_CLIENT = 5572; // Puerto de WORKER_CHECK
+    public static final Integer WORKER_CHECK_MAX_TRIES = 3; // Puerto de WORKER_CHECK
 
     /* Otras variables */
     public static final UUID clientUUID = UUID.randomUUID(); // UUID identificador del cliente
@@ -23,12 +24,29 @@ public class Main {
 
     /* Variables para el control del fallback (Balanceador alternativo) */
     private static String fallbackServer = null;
+    private static boolean systemHalted = false;
+    private static int consecutiveTries = 0;
 
     private static final AtomicBoolean fallbackReady = new AtomicBoolean(true);
 
     /* Contexto de red y sockets */
     private static ZContext context;
     private static ZMQ.Socket socket;
+
+    public static String makeRequest(String request, Thread workerCheck) {
+        System.out.println("Enviando solicitud...");
+        // Enviar una petición
+        socket.sendMore(clientUUID.toString().getBytes(ZMQ.CHARSET));
+        socket.send(request.getBytes(ZMQ.CHARSET));
+        workerCheck.start();
+        // Recibir la respuesta
+        byte[] response = socket.recv();
+        workerCheck.interrupt();
+        // Mostrar la respuesta
+        consecutiveTries = 0;
+        System.out.println("Respuesta del servidor: ");
+        return new String(response, ZMQ.CHARSET);
+    }
 
     /**
      * Establecer el servidor de fallback
@@ -38,10 +56,8 @@ public class Main {
     public static void setFallbackServer(String serverConn) {
         if ((fallbackServer != null) && (serverConn.equals("NOALT"))) {
             fallbackServer = null;
-            System.err.println("(HealthCheck) Balanceador alternativo desconectado");
         } else if ((fallbackServer == null) && (!serverConn.equals("NOALT"))) {
             fallbackServer = serverConn;
-            System.out.println("(HealthCheck) Balanceador alternativo: " + serverConn);
         }
     }
 
@@ -61,6 +77,7 @@ public class Main {
 
         // Conectarse al servidor
         socket.connect("tcp://" + serverIp + ":" + PORT);
+        System.out.println("Conectado a " + serverIp);
     }
 
     /**
@@ -70,6 +87,7 @@ public class Main {
         socket.close();
         context.close();
         context.destroy();
+        System.err.println("Conexión detenida");
     }
 
     public static void main(String[] args) {
@@ -85,7 +103,7 @@ public class Main {
         startConnection(serverIp);
 
         // Conectarse al servicio de HealthCheck
-        Thread healthCheck = new Thread(new HealthCheck(serverIp, context));
+        Thread healthCheck = new Thread(new BalancerHealthCheck(serverIp, context));
 
         // Manejador de errores de HealthCheck (Cuando el servidor falla)
         Thread.UncaughtExceptionHandler failedHealthCheck = (t, e) -> {
@@ -99,6 +117,7 @@ public class Main {
                 // Si no hay fallback configurado
                 if (fallbackServer == null) {
                     System.err.println("El servidor ha dejado de funcionar, intenta más tarde...");
+                    systemHalted = true;
                     System.exit(1);
                 }
 
@@ -107,7 +126,20 @@ public class Main {
                 System.err.println("Servidor no responde, cambiando al servidor de Fallback");
                 stopConnection();
                 startConnection(fallbackServer);
+                fallbackServer = null;
                 fallbackReady.set(true); // Liberar la conexión
+            } else if (e instanceof WorkerNotResponding) {
+                if (consecutiveTries >= WORKER_CHECK_MAX_TRIES) {
+                    System.err.println("No hay servidores disponibles, intenta más tarde");
+                    System.exit(1);
+                }
+
+                System.err.println("Reiniciando petición (" + consecutiveTries + ")");
+                fallbackReady.set(false);
+                stopConnection();
+                startConnection(serverIp);
+                consecutiveTries++;
+                fallbackReady.set(true);
             }
         };
 
@@ -119,6 +151,7 @@ public class Main {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             // Desconectarse
             System.out.println("Desconectándose del sistema...");
+            systemHalted = true;
             stopConnection();
             try {
                 Thread.sleep(500);
@@ -131,6 +164,12 @@ public class Main {
         int opcion = 0;
         boolean wasInterrupted = false; // Flag para saber si la operación fue interrumpida y no mostrar
         do {
+            if (systemHalted) break;
+
+            // Create WorkerThread
+            Thread workerCheck = new Thread(new WorkerCheck(serverIp, context));
+            workerCheck.setUncaughtExceptionHandler(failedHealthCheck);
+
             if (!wasInterrupted) {
                 System.out.println("\nSistema de gestión de productos:");
                 System.out.println("1. Listar productos");
@@ -163,15 +202,7 @@ public class Main {
                             int idProducto = scanner.nextInt();
                             System.out.println("Comprando producto " + idProducto);
                         }
-                        case 4 -> {
-                            System.out.println("Realizando un ping...");
-                            // Enviar una petición
-                            socket.send("PING".getBytes(ZMQ.CHARSET));
-                            // Recibir la respuesta
-                            byte[] response = socket.recv();
-                            // Mostrar la respuesta
-                            System.out.println("Respuesta del servidor: " + new String(response, ZMQ.CHARSET));
-                        }
+                        case 4 -> System.out.println(makeRequest("PING", workerCheck));
                     }
 
                     // La operación pudo completarse correctamente
@@ -181,6 +212,13 @@ public class Main {
                 // En caso de que haya error de conexión se activa el flag de interrupción
                 wasInterrupted = true;
             }
+
+            // Unir el Hilo
+            try {
+                workerCheck.join();
+            } catch (InterruptedException ignored) {
+            }
+
         } while (opcion != 0);
     }
 }

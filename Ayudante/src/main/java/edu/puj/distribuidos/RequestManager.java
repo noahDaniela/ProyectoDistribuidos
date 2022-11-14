@@ -3,6 +3,9 @@ package edu.puj.distribuidos;
 import org.zeromq.*;
 
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class RequestManager implements Runnable {
     protected Integer nRequest = 0; // Contador de la cantidad de solicitudes atendidas
@@ -39,8 +42,16 @@ public class RequestManager implements Runnable {
                 try {
                     // Recibir solicitud
                     System.out.println("\n(" + nRequest + ") Esperando solicitudes");
+                    String client = new String(socket.recv(), ZMQ.CHARSET);
                     String request = new String(socket.recv(), ZMQ.CHARSET);
+                    System.out.println("Cliente: " + client);
                     System.out.println("Solicitud: " + request);
+
+                    // Iniciar WORKERCHECK
+                    ScheduledExecutorService checkers = Executors.newSingleThreadScheduledExecutor();
+                    Thread workerCheck = new Thread(new WorkerCheckServer(Main.getContext(), UUID.fromString(client), serverIP));
+                    checkers.scheduleAtFixedRate(workerCheck,
+                            0, Main.WORKER_CHECK_TIME, TimeUnit.MILLISECONDS);
 
                     // Procesar solicitud
                     String respuesta = switch (request) {
@@ -52,6 +63,9 @@ public class RequestManager implements Runnable {
                     System.out.println("Enviando respuesta...");
                     socket.send(respuesta.getBytes(ZMQ.CHARSET));
                     nRequest++;
+
+                    // Detener WORKERCHECK
+                    checkers.shutdownNow();
 
                 } catch (ZMQException e) {
                     switch (ZMQ.Error.findByCode(e.getErrorCode())) {

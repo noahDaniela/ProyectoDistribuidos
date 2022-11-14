@@ -1,15 +1,16 @@
 package edu.puj.distribuidos;
 
 import org.zeromq.SocketType;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
-public class HealthCheck implements Runnable {
+public class BalancerHealthCheck implements Runnable {
     protected final ZMQ.Socket socket;
 
-    public HealthCheck(String serverIP) {
+    public BalancerHealthCheck(String serverIP, ZContext context) {
         // Inicializar el socket
-        this.socket = Main.getContext().createSocket(SocketType.SUB);
+        this.socket = context.createSocket(SocketType.SUB);
         socket.connect("tcp://" + serverIP + ":" + Main.HEALTH_CHECK_PORT);
         System.out.println("Servicio de HealthCheck activado: " + serverIP);
 
@@ -32,7 +33,7 @@ public class HealthCheck implements Runnable {
             }
         } catch (ZMQException e) {
             if (ZMQ.Error.findByCode(e.getErrorCode()) == ZMQ.Error.EAGAIN) {
-                System.err.println("El Servidor no responde");
+                System.err.println("\nEl Servidor no responde");
                 throw new ServerNotResponding();
             }
         } catch (Exception e) {

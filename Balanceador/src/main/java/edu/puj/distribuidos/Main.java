@@ -15,6 +15,8 @@ public class Main {
     public static final Integer WORKER_PORT = 5560;
     public static final Integer HEALTH_CHECK_PORT = 5570;
     public static final Integer ALTPING_PORT = 5571;
+    public static final Integer WORKER_CHECK_PORT_CLIENT = 5572;
+    public static final Integer WORKER_CHECK_PORT_SERVER = 5573;
 
     /* Otras constantes */
     public static final Integer SERVER_HEALTH_CHECK_TIME = 1000;
@@ -74,7 +76,7 @@ public class Main {
 
                 // Habilitar HealthCheck (Hasta que el MAIN muera)
                 AtomicReference<Boolean> waitingForMain = new AtomicReference<>(true);
-                Thread healthCheck = new Thread(new HealthCheck(mainBalancer, context));
+                Thread healthCheck = new Thread(new BalancerHealthCheck(mainBalancer, context));
                 healthCheck.setUncaughtExceptionHandler((t, e) -> {
                     if (e instanceof ServerNotResponding) {
                         waitingForMain.set(false);
@@ -107,7 +109,7 @@ public class Main {
             /* Modo Principal - MAIN */
 
             // Configurar checkeo de balanceador alternativo
-            Thread alternativeCheck = new Thread(new AlternativeCheckServer(context));
+            Thread alternativeCheck = new Thread(new AlternativeHealthCheck(context));
 
             // Configurar checkeo de salud
             checkers.scheduleAtFixedRate(new HealthCheckServer(context),
@@ -123,9 +125,32 @@ public class Main {
             workers.bind("tcp://*:" + WORKER_PORT);
             System.out.println("Servicio de worker en el puerto: " + WORKER_PORT);
 
-            // Crear el proxy entre solicitudes y workers
+            // Creando sockets del WORKERCHECK
+            ZMQ.Socket workerCheckPublisher = context.createSocket(SocketType.XPUB);
+            ZMQ.Socket workerCheckSubscriber = context.createSocket(SocketType.XSUB);
+
+            workerCheckSubscriber.bind("tcp://*:" + WORKER_CHECK_PORT_SERVER); // Workers
+            System.out.println("Servicio de WorkerCheck (Worker) en el puerto: " + WORKER_CHECK_PORT_SERVER);
+            workerCheckPublisher.bind("tcp://*:" + WORKER_CHECK_PORT_CLIENT); // Clients
+            System.out.println("Servicio de WorkerCheck (Client) en el puerto: " + WORKER_CHECK_PORT_CLIENT);
+
+            // Iniciar Check de alternativos
             alternativeCheck.start();
+
+            // Crear el hilo proxy de alternativos
+            Thread workerThread = new Thread() {
+                @Override
+                public void run() {
+                    ZMQ.proxy(workerCheckSubscriber, workerCheckPublisher, null);
+                    super.run();
+                }
+            };
+
+            workerThread.start();
+
+            // Crear thread de proxy
             ZMQ.proxy(clients, workers, null);
+
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {

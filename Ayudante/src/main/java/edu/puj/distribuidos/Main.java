@@ -16,6 +16,8 @@ public class Main {
     /* Puertos de red */
     public static final Integer HEALTH_CHECK_TIMEOUT = 5000; // Tiempo de espera antes de dar por muerto al Servidor
     public static final Integer HEALTH_CHECK_PORT = 5570; // Puerto para healthchecl
+    public static final Integer WORKER_CHECK_PORT_SERVER = 5573; // Puerto para healthcheck del worker
+    public static final Integer WORKER_CHECK_TIME = 1000; // Tiempo en el que se manda un WORKER_CHECK
     public static final Integer PORT = 5560; // Puerto del Servidor
 
     /* Hilos */
@@ -51,7 +53,7 @@ public class Main {
         // Crear el hilo principal (Atiende solicitudes)
         Thread mainThread = new Thread(new RequestManager(serverIP));
         // Crear el hilo del serivicio de HealthCheck
-        Thread healthCheck = new Thread(new HealthCheck(serverIP));
+        Thread healthCheck = new Thread(new BalancerHealthCheck(serverIP));
 
         // Inicialización de los servicios
         healthCheck.setUncaughtExceptionHandler(threadExceptionHandler);

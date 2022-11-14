@@ -11,7 +11,13 @@ En el modo de operación ALTERNATIVE, el Balanceador se conectará a un Balancea
 ## Modelo de comunicación
 
 ### Cliente / Balanceador
-El cliente envía un String con el comando correspondiente a la solicitud y sus parámetros y luego el Balanceador le responde con otra String
+El cliente envía un String con su UUID, el comando correspondiente a la solicitud y sus parámetros y luego el Balanceador le responde con otra String:
+
+Petición:
+fbd58dfa-2db1-40d8-99cc-042a74e439e5 PING
+
+Respuesta:
+PONG
 
 #### Comandos de usuario
 
